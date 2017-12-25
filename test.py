@@ -20,7 +20,7 @@ transform = transforms.Compose([
 
 test_dataset = datasets.CIFAR10(root='./data/',
                               train=False, 
-                              transform=transforms.ToTensor())
+                              transform=transform)
 
 test_loader = torch.utils.data.DataLoader(dataset=test_dataset,
                                           batch_size=20, 
@@ -28,6 +28,10 @@ test_loader = torch.utils.data.DataLoader(dataset=test_dataset,
 
 classes = ('plane', 'car', 'bird', 'cat',
            'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
+
+def denorm(x):
+    out = (x + 1) / 2
+    return out.clamp(0, 1)
 
 class ResidualAttentionModel(nn.Module):
     def __init__(self):
@@ -88,13 +92,14 @@ num = 0
 
 for images, labels in test_loader:
     images = Variable(images.cuda())
+    labels = Variable(labels.cuda())
     outputs, image, feature1, feature2, feature3 = model(images)
     #save image
     print('process batch %d' % num)
-    image = image.view(image.size(0), 3, 28, 28)
-    feature1 = feature1.view(feature1.size(0), 3, 28, 28)
-    feature2 = feature2.view(feature2.size(0), 3, 28, 28)
-    feature3 = feature3.view(feature3.size(0), 3, 28, 28)
+    image = image.view(image.size(0), 3, 224, 224)
+    # feature1 = feature1.view(feature1.size(0), 3, 28, 28)
+    # feature2 = feature2.view(feature2.size(0), 3, 28, 28)
+    # feature3 = feature3.view(feature3.size(0), 3, 28, 28)
     if not os.path.exists('./output'):
       os.mkdir('./output')
     save_image(denorm(image.data), './output/image-%d.png' %(num+1))
@@ -105,11 +110,11 @@ for images, labels in test_loader:
     #predict
     _, predicted = torch.max(outputs.data, 1)
     total += labels.size(0)
-    correct += (predicted == labels).sum()
+    correct += (predicted == labels.data).sum()
     #
-    c = (predicted == labels).squeeze()
+    c = (predicted == labels.data).squeeze()
     for i in range(4):
-        label = labels[i]
+        label = labels.data[i]
         class_correct[label] += c[i]
         class_total[label] += 1
 
